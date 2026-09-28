@@ -1,0 +1,24 @@
+{
+"type": "FeatureCollection",
+"name": "park",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { "name_e": "Bueng Kaen Nakhon Public Park", "name_t": "สวนสาธารณะบึงแก่นนคร", "latitude": 16.4170864, "longitude": 102.8351271, "photo": "images/park/p1.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8351271, 16.4170864 ] } },
+{ "type": "Feature", "properties": { "name_e": "Bueng Thung Sang Health Park", "name_t": "สวนสุขภาพบึงทุ่งสร้าง", "latitude": 16.4448145, "longitude": 102.8486881, "photo": "images/park/p2.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8486881, 16.4448145 ] } },
+{ "type": "Feature", "properties": { "name_e": "Ratchadanusorn Public Park", "name_t": "สวนสาธารณะรัชดานุสรณ์", "latitude": 16.4395837, "longitude": 102.8356706, "photo": "images/park/p3.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8356706, 16.4395837 ] } },
+{ "type": "Feature", "properties": { "name_e": "Bueng Nong Waeng Park", "name_t": "สวนสาธารณะบึงหนองแวง", "latitude": 16.4588455, "longitude": 102.8287849, "photo": "images/park/p4.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8287849, 16.4588455 ] } },
+{ "type": "Feature", "properties": { "name_e": "Nong Khot Lake", "name_t": "บึงหนองโคตร", "latitude": 16.4349499, "longitude": 102.8024905, "photo": "images/park/p5.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8024905, 16.4349499 ] } },
+{ "type": "Feature", "properties": { "name_e": "Nong Song Maew Public Park", "name_t": "สวนสาธารณะหนองซองแมว", "latitude": 16.4719558, "longitude": 102.8572182, "photo": "images/park/p6.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8572182, 16.4719558 ] } },
+{ "type": "Feature", "properties": { "name_e": "KKC Gate Park", "name_t": "สวนประตูเมืองขอนแก่น​", "latitude": 16.4318011, "longitude": 102.8245077, "photo": "images/park/p7.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8245077, 16.4318011 ] } },
+{ "type": "Feature", "properties": { "name_e": "Romklao Kanlaphruek Park", "name_t": "สวนร่มเกล้ากาลพฤกษ์", "latitude": 16.4706172, "longitude": 102.817357, "photo": "images/park/p8.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.817357, 16.4706172 ] } },
+{ "type": "Feature", "properties": { "name_e": "Agricultural Technology Park KKU", "name_t": "อุทยานเทคโนโลยีการเกษตร มข", "latitude": 16.4652327, "longitude": 102.8137465, "photo": "images/park/p9.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8137465, 16.4652327 ] } },
+{ "type": "Feature", "properties": { "name_e": "KKU Arboretum", "name_t": "สวนรุกขชาติ มข.", "latitude": 16.477736, "longitude": 102.8244708, "photo": "images/park/p10.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8244708, 16.477736 ] } },
+{ "type": "Feature", "properties": { "name_e": "Kavi Garden", "name_t": "สวนกวี ", "latitude": 16.4677505, "longitude": 102.8152202, "photo": "images/park/p11.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8152202, 16.4677505 ] } },
+{ "type": "Feature", "properties": { "name_e": "Kanlaphruek Reservoir", "name_t": "อ่างกาลพฤกษ์", "latitude": 16.4627377, "longitude": 102.8196203, "photo": "images/park/p12.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8196203, 16.4627377 ] } },
+{ "type": "Feature", "properties": { "name_e": "Innovative Agriculture Cutter Flower Plot", "name_t": "แปลงดอกคัตเตอร์ เกษตรนวัตกรรม", "latitude": 16.465348, "longitude": 102.814659, "photo": "images/park/p13.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.814659, 16.465348 ] } },
+{ "type": "Feature", "properties": { "name_e": "Si Than Lake", "name_t": "ลานกิจกรรม ริมบึงสีฐาน", "latitude": 16.444344, "longitude": 102.8152165, "photo": "images/park/p14.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8152165, 16.444344 ] } },
+{ "type": "Feature", "properties": { "name_e": "KKU Science Park", "name_t": "อุทยานวิทยาศาสตร์ มข", "latitude": 16.4557087, "longitude": 102.8195271, "photo": "images/park/p15.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8195271, 16.4557087 ] } },
+{ "type": "Feature", "properties": { "name_e": "Plastic Pond kku", "name_t": "สระพลาสติก มข.", "latitude": 16.4731021, "longitude": 102.819319, "photo": "images/park/p16.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.819319, 16.4731021 ] } },
+{ "type": "Feature", "properties": { "name_e": "Sakae Tree", "name_t": "ต้นสักสายรหัส", "latitude": 16.4738161, "longitude": 102.8142871, "photo": "images/park/p17.jpg" }, "geometry": { "type": "Point", "coordinates": [ 102.8142871, 16.4738161 ] } }
+]
+}

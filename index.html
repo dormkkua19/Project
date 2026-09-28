@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>KKU Dorm Selection | ค้นหาที่พักใกล้ มข.</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.css">
+  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="dorm-panel.css">
+  <link rel="stylesheet" href="about.css">
+  <style>
+  #surveyFrame { position: fixed; right: 0; bottom: 0; width: 1px; height: 1px; border: 0; z-index: 3000; background: transparent; }
+  #surveyFrame.survey-open { width: min(420px, 100vw); height: min(680px, 100vh); }
+  /* มือถือ: ให้ iframe เต็มจอ เพื่อจัดแบบประเมินไว้กลางจอ */
+  @media (max-width: 700px) {
+    #surveyFrame.survey-open { top: 0; left: 0; width: 100vw; height: 100vh; height: 100dvh; }
+  }
+
+  /* ฉากหลังเบลอตอนเปิดแบบประเมิน */
+  #surveyOverlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2999;
+    background: rgba(15, 30, 60, .35);
+    -webkit-backdrop-filter: blur(6px);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease;
+  }
+  body:has(#surveyFrame.survey-open) #surveyOverlay {
+    opacity: 1;
+    pointer-events: auto;
+  }
+</style>
+
+</head>
+
+<body> 
+<!-- Disclaimer Popup (ป๊อปอัปแจ้งเตือน) -->
+<div id="disclaimerOverlay" class="disclaimer-overlay">
+  <div class="disclaimer-box"> 
+    <div class="disclaimer-icon"><i class="ti ti-info-circle"></i></div>  
+    <h2>เว็บไซต์นี้เป็นเพียงเครื่องมือช่วยในการตัดสินใจ</h2>
+    <hr>
+    <p>
+      ผลลัพธ์ที่ได้เป็นเพียงข้อมูลประกอบการพิจารณาเท่านั้น<br>
+      การตัดสินใจเลือกขึ้นอยู่กับผู้ใช้งาน
+    </p>
+    <button onclick="closeDisclaimer()">รับทราบ</button>
+  </div>
+</div>
+
+  <header>
+    <div class="header-logo">KKU <span>Dorm Selection</span></div>
+    <span class="header-sub"> ระบบวิเคราะห์ความเหมาะสมในการเลือกที่พัก มหาวิทยาลัยขอนเเก่น</span>
+   <button id="surveyInvite" type="button" onclick="openSurvey()"><i class="ti ti-message-circle-question"></i> ประเมินระบบ</button>
+    <button id="filterToggle" type="button" aria-controls="sidebar" aria-expanded="false" onclick="toggleDrawer()"><i class="ti ti-adjustments-horizontal"></i> ปรับเงื่อนไข</button>
+  </header>
+
+  <div id="drawerOverlay" onclick="toggleDrawer(false)"></div> <!--เพิ่มฉากหลังมืด (ใช้ตอนเปิดลิ้นชัก)-->
+
+  <div class="layout"> <!--โครงสร้าง 3 คอลัมน์ --> 
+
+    <div id="sidebar"> <!--แถบควบคุมคอลัมน์ ด้านซ้าย -->
+      <div class="drawer-head"> <!--เพิ่มหัวลิ้นชักพร้อมปุ่มปิด-->
+        <span>ปรับเงื่อนไข</span>
+        <button type="button" class="drawer-close" onclick="toggleDrawer(false)">✕</button>
+</div>
+      <div class="sidebar-scroll"> <!--คอลัมน์ด้านซ้าย เลื่อนขึ้น-ลงได้ -->
+ 
+        <div class="block">  <!--กล่องที่ใช้รวมสิ่งที่เป็นหัวข้อเดียวกัน แต่ละ block = 1 หัวข้อ เช่น คณะ  ประเภทที่พัก-->
+          <div class="section-title">คณะ / สาขา</div>
+          <select id="facultySelect" onchange="selectFaculty()">  <!--ดรอปดาวน์ให้ผู้ใช้เลือกได้ 1 คณะ แล้ว JavaScript จะใช้ id อ่านค่าที่ผู้ใช้เลือกไว้ (เช่นตอนคำนวณระยะทางจากคณะไปหอพัก)-->
+            <option value="">— เลือกคณะ —</option>
+            <option value="khonkaenuniversity">มหาวิทยาลัยขอนแก่น (ส่วนกลาง)</option>
+            <option value="medicine">แพทยศาสตร์</option>
+            <option value="dentistry">ทันตแพทยศาสตร์</option>
+            <option value="pharmacy">เภสัชศาสตร์</option>
+            <option value="nursing">พยาบาลศาสตร์</option>
+            <option value="medicalsciences">เทคนิคการแพทย์</option>
+            <option value="publichealth">สาธารณสุขศาสตร์</option>
+            <option value="engineering">วิศวกรรมศาสตร์</option>
+            <option value="science">วิทยาศาสตร์</option>
+            <option value="architecture">สถาปัตยกรรมศาสตร์</option>
+            <option value="computing">วิทยาลัยการคอมพิวเตอร์</option>
+            <option value="humanities">มนุษยศาสตร์และสังคมศาสตร์</option>
+            <option value="business">บริหารธุรกิจและการบัญชี</option>
+            <option value="finearts">ศิลปกรรมศาสตร์</option>
+            <option value="law">นิติศาสตร์</option>
+            <option value="economics">เศรษฐศาสตร์</option>
+            <option value="localadmin">วิทยาลัยการปกครองท้องถิ่น</option>
+            <option value="international">วิทยาลัยนานาชาติ</option>
+            <option value="education">ศึกษาศาสตร์</option>
+            <option value="agriculture">เกษตรศาสตร์</option>
+            <option value="technology">เทคโนโลยี</option>
+            <option value="veterinary">สัตวแพทย์</option>
+          </select>
+        </div>
+
+        <div class="block">
+          <div class="section-title">ประเภทที่พัก</div>
+          <select onchange="setHousingType(this.value)">
+            <option value="all">ทั้งหมด</option>
+            <option value="dorm_internal">หอพักใน</option>
+            <option value="dorm_external">หอพักนอก</option>
+            <option value="condo">คอนโด</option>
+          </select>
+        </div>
+
+        <div class="block">
+          <div class="section-title">ประเภทที่พัก(เพศ)</div>
+          <select id="genderSelect" onchange="setGenderType(this.value)">
+            <option value="both">ที่พักรวม</option>
+            <option value="female">ที่พักหญิง</option>
+            <option value="male">ที่พักชาย</option>
+          </select>
+        </div>
+
+<!--block 4: เลื่อนให้ค่าน้ำหนักปัจจัย MCAท**ต้องแก้ให้ครบปัจจัยระยะทาง เหลือสถานบันเทิง-->
+         <div class="block">
+          <div class="section-title">ความสำคัญของปัจจัย</div>
+          <p class="weight-help">ปรับได้ตั้งแต่ 1 (น้อย) ถึง 5 (มาก) · ค่าเริ่มต้น 3</p>
+          <div class="weight-row">
+            <span class="weight-label">ราคา</span>
+            <input type="range" id="imp_price" min="1" max="5" value="3" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="weight-val">3</span>
+          </div>
+          <div class="weight-row">
+            <span class="weight-label">ระยะทางจากคณะ</span>
+            <input type="range" id="imp_distance" min="1" max="5" value="3" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="weight-val">3</span>
+          </div>
+          <div class="weight-row">
+            <label class="weight-label" for="imp_bathroom">ลักษณะห้องน้ำ</label>
+            <input type="range" id="imp_bathroom" min="1" max="5" value="3" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="weight-val">3</span>
+          </div>
+          <div class="weight-row">
+            <span class="weight-label">ร้านอาหาร</span>
+            <input type="range" id="imp_food" min="1" max="5" value="3" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="weight-val">3</span>
+          </div>
+          <div class="weight-row">
+            <span class="weight-label">ร้านสะดวกซื้อ(7-11)</span>
+            <input type="range" id="imp_cvs" min="1" max="5" value="3" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="weight-val">3</span>
+          </div>
+          <div class="weight-row">
+            <label class="weight-label" for="imp_amenity">สิ่งอำนวยความสะดวก</label>
+            <input type="range" id="imp_amenity" min="1" max="5" value="3" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="weight-val">3</span>
+          </div>
+          <div class="weight-row">
+            <label class="weight-label" for="imp_occupants">จำนวนผู้เข้าพัก</label>
+            <input type="range" id="imp_occupants" min="1" max="5" value="3" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="weight-val">3</span>
+          </div>
+          <div class="weight-row">
+            <span class="weight-label">โรงพยาบาล</span>
+            <input type="range" id="imp_hospital" min="1" max="5" value="3" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="weight-val">3</span>
+          </div>
+          <div class="weight-row">
+            <span class="weight-label">สวนสาธารณะ</span>
+            <input type="range" id="imp_park" min="1" max="5" value="3" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="weight-val">3</span>
+          </div>
+          <div class="weight-row">
+            <span class="weight-label">จุดรอรถ Shuttle Bus</span>
+            <input type="range" id="imp_transport" min="1" max="5" value="3" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="weight-val">3</span>
+          </div>
+          <div class="weight-row">
+            <label class="weight-label" for="imp_entertain">สถานบันเทิง</label>
+            <input type="range" id="imp_entertain" min="1" max="5" value="3" oninput="this.nextElementSibling.textContent=this.value">
+            <span class="weight-val">3</span>
+          </div>
+        </div>
+
+        <div class="block">
+          <div class="section-title">ช่วงราคา (บาท/เดือน)</div>
+          <div id="priceSlider"></div>
+          <div class="price-display">
+            <span>฿<span id="priceMin">0</span></span>
+            <strong>฿<span id="priceMax">5000</span></strong>
+          </div>
+          <div class="price-chips"><!--ปุ่ม "ช่วงราคาสำเร็จรูป" ให้กดเลือกไวๆ -->
+            <button class="price-chip" onclick="selectPriceChip(this,0,2000)">฿ 0 - ฿ 2,000</button>
+            <button class="price-chip" onclick="selectPriceChip(this,2000,3500)">฿ 2,000 - ฿ 3,500</button>
+            <button class="price-chip" onclick="selectPriceChip(this,3500,4500)">฿ 3,500 - ฿ 4,500</button>
+            <button class="price-chip" onclick="selectPriceChip(this,4500,5500)">฿ 4,500 - ฿ 5,500</button>
+            <button class="price-chip" onclick="selectPriceChip(this,5500,6500)">฿ 5,500 - ฿ 6,500</button>
+            <button class="price-chip" onclick="selectPriceChip(this,6500,7500)">฿ 6,500 - ฿ 7,500</button>
+            <button class="price-chip" onclick="selectPriceChip(this,7500,10000)">&gt; ฿ 7,500</button>
+          </div>
+        </div>
+
+        <div class="block"> <!--ถ้ากดจะเอาไปกรอง -->
+          <div class="section-title">ที่จอดรถ</div>
+          <div class="check-row">
+            <label class="check-item">
+              <input type="checkbox" id="filterCar" onchange="updateMap()"> รถยนต์
+            </label>
+            <label class="check-item">
+              <input type="checkbox" id="filterMoto" onchange="updateMap()"> มอเตอร์ไซค์
+            </label>
+          </div>
+        </div>
+
+        <div class="block" style="margin-bottom:14px">
+          <div class="section-title">สิ่งอำนวยความสะดวก</div>
+          <div class="amenity-grid">
+            <label class="amenity-item"><input type="checkbox" value="wifi"> Wi-Fi</label>
+            <label class="amenity-item"><input type="checkbox" value="air_con"> แอร์</label>
+            <label class="amenity-item"><input type="checkbox" value="furniture"> เฟอร์นิเจอร์</label>
+            <label class="amenity-item"><input type="checkbox" value="cctv"> CCTV</label>
+            <label class="amenity-item"><input type="checkbox" value="keycard"> Keycard</label>
+            <label class="amenity-item"><input type="checkbox" value="elevator"> ลิฟต์</label>
+            <label class="amenity-item"><input type="checkbox" value="appliance"> เครื่องใช้ไฟฟ้า</label>
+            <label class="amenity-item"><input type="checkbox" value="comm_area"> พื้นที่ส่วนกลาง</label>
+            <!--ตัวอย่างเช่น ผู้ใช้ติ๊ก Wi-Fi + แอร์ + CCTV JavaScript อ่านค่าที่เลือกได้เป็นwifi, air_con, cctv 
+            แล้วนำไปใช้ กรองหอพักที่มีตามที่ผู้ใช้ต้องการ -->
+          </div>
+        </div>
+
+      </div>
+
+
+      <!--แถบปุ่มล่างสุดที่ตรึงอยู่กับที่ ปุ่ม reset กับปุ่ม คำนวณคะแนน MCA -->
+      <div class="sidebar-footer">
+        <div class="footer-btns">
+          <button class="btn-reset" onclick="resetAll()">↺ รีเซ็ต</button>
+          <button class="btn-calc" onclick="calculateMCA()"><i class="ti ti-calculator"></i> คำนวณคะแนน MCA</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="map"> <!-- แผนที่ (คอลัมน์กลาง) -->
+      <div id="summaryBar" onclick="toggleDrawer(true)"></div>
+      <div class="map-legend">
+        <div class="legend-title">คะแนนความเหมาะสม (MCA Score)</div>
+        <div class="legend-item" data-tier="1"><span class="legend-dot" style="background:#15803d"></span>≥ 80 &nbsp;ดีเยี่ยม</div>
+        <div class="legend-item" data-tier="2"><span class="legend-dot" style="background:#a16207"></span>60–79 ดี</div>
+        <div class="legend-item" data-tier="3"><span class="legend-dot" style="background:#c2410c"></span>40–59 ปานกลาง</div>
+        <div class="legend-item" data-tier="4"><span class="legend-dot" style="background:#b91c1c"></span>≤ 39 &nbsp;ต่ำ</div>
+      </div>
+    </div>
+
+    <div id="results"> <!--ผลลัพธ์/อันดับ (คอลัมน์ขวา)-->
+      <div class="results-header">
+        <h2><i class="ti ti-trophy"></i>ผลการวิเคราะห์<span id="resultCount"></span></h2>
+        <p>เลือกที่พักเพื่อดูตำแหน่งและรายละเอียดบนแผนที่</p>
+      </div>
+      <div id="ranking"></div>
+    </div>
+
+  </div>
+  <!-- ↑ ปิด div.layout — จบโครงสร้าง 3 คอลัมน์หลักทั้งหมดตรงนี้ -->
+
+
+
+<!-- <script> ฝังในตัว ก่อนโหลดไลบรารี 2 ฟังก์ชัน (selectPriceChip, resetAll)-->
+  <script>
+    function selectPriceChip(el, min, max) {
+      document.querySelectorAll('.price-chip').forEach(b => b.classList.remove('active'));
+      el.classList.add('active');
+      setPriceRange(min, max);
+    }
+
+    function resetAll() {
+      document.getElementById('facultySelect').value = '';
+      document.querySelectorAll('select').forEach(s => { if (s !== document.getElementById('facultySelect')) s.selectedIndex = 0; });
+      document.getElementById('filterCar').checked = false;
+      document.getElementById('filterMoto').checked = false;
+      document.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false);
+      document.querySelectorAll('input[type=range]').forEach(r => {
+        r.value = 3;
+        const next = r.nextElementSibling;
+        if (next && next.classList.contains('weight-val')) next.textContent = '3';
+      });
+      document.querySelectorAll('.price-chip').forEach(b => b.classList.remove('active'));
+      if (typeof setPriceRange === 'function') setPriceRange(0, 8500);
+    }
+  </script>
+
+
+ <!-- โหลด satisfaction-popup.html จากไฟล์แยก -->
+<div id="surveyOverlay" onclick="closeSurvey()"></div>
+<script>
+  // กดพื้นที่เบลอ = กดปุ่ม × ในแบบประเมิน
+  function closeSurvey() {
+    document.getElementById("surveyFrame")
+      .contentDocument?.getElementById("survey-close")?.click();
+  }
+</script>
+<iframe id="surveyFrame" src="satisfaction-popup.html" title="แบบประเมินระบบ">
+</iframe>
+ 
+
+
+<!-- โหลด JavaScript จากภายนอก + ไฟล์ของเราเอง-->
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.0/dist/nouislider.min.js"></script>
+  <script src="script.js"></script> <!-- โค้ดของเราเอง" ต้องมาหลังสุดเสมอ-->
+  <script src="dorm-panel.js"></script>
+  <script src="about.js"></script>
+
+</body>
+</html>;

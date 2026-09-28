@@ -1,0 +1,356 @@
+<!--
+  ป๊อปอัพแบบประเมินระบบ (System Evaluation) -> ส่งข้อมูลเข้า Google Sheet
+  วิธีใช้:
+  1. ทำตามขั้นตอนใน apps-script-code.gs เพื่อสร้าง Web App URL จาก Google Apps Script
+  2. แทนค่า WEB_APP_URL ด้านล่างด้วย URL ที่ได้จากขั้นตอนที่ 1
+  3. ทุกครั้งที่ปรับระบบรอบใหม่ (Iteration) ให้เปลี่ยน VERSION เช่น "v1" -> "v2"
+-->
+
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; background: transparent; font-family: 'Sarabun', 'Segoe UI', sans-serif; color: #1a1f2e; }
+  button, input, textarea { font: inherit; }
+  button { cursor: pointer; }
+
+  #survey-popup-wrapper { position: fixed; bottom: 20px; right: 20px; }
+  #survey-popup { position: relative; width: 380px; max-width: calc(100vw - 40px); max-height: calc(100vh - 40px); overflow: auto; padding: 22px; background: #fff; border: 1px solid #e2e6ef; border-radius: 14px; box-shadow: 0 12px 36px rgba(18,39,67,.18); }
+  #survey-close { position: absolute; top: 9px; right: 9px; width: 30px; height: 30px; border: 0; border-radius: 50%; background: none; color: #6b7280; font-size: 18px; }
+  #survey-close:hover { background: #e8f0fb; }
+  #survey-step-indicator { margin-bottom: 10px; font-size: 11px; color: #6b7280; }
+
+  .survey-title { margin: 0 0 4px; font-size: 16px; font-weight: 600; color: #1A3F72; }
+  .survey-title-only { margin-bottom: 14px; }
+  .survey-label { display: block; margin-bottom: 6px; font-size: 13px; }
+  .survey-field { margin-bottom: 16px; }
+  .survey-hidden, .survey-err { display: none; }
+  .survey-err { margin: 6px 0; font-size: 12px; color: #b91c1c; }
+  .survey-note { margin: 0 0 14px; font-size: 12px; color: #6b7280; }
+
+  .survey-textarea { width: 100%; padding: 9px 11px; font-size: 14px; color: #1a1f2e; background: #fff; border: 1px solid #e2e6ef; border-radius: 6px; min-height: 70px; resize: vertical; }
+
+  .option-group { display: flex; flex-direction: column; gap: 6px; }
+  .option-group-inline { flex-direction: row; flex-wrap: wrap; }
+  .opt-btn, .scale-btn { padding: 8px 10px; font-size: 13px; text-align: left; color: #1a1f2e; background: #fff; border: 1px solid #e2e6ef; border-radius: 6px; }
+  .opt-btn:hover, .scale-btn:hover { background: #e8f0fb; }
+  .option-group-inline .opt-btn { flex: 1; min-width: 70px; text-align: center; }
+  .opt-btn.selected { border-color: #2563a8; background: #e8f0fb; color: #1A3F72; font-weight: 600; }
+  .scale-group { display: flex; gap: 6px; }
+  .scale-btn { flex: 1; height: 40px; text-align: center; }
+  .scale-btn.selected { border-color: #1A3F72; background: #1A3F72; color: #fff; }
+
+  .survey-actions { display: flex; gap: 10px; margin-top: 8px; }
+  .btn-primary, .btn-secondary { flex: 1; width: 100%; padding: 10px; font-size: 13px; font-weight: 600; border-radius: 6px; }
+  .btn-primary { color: #fff; background: #1A3F72; border: 1px solid #1A3F72; }
+  .btn-primary:hover { background: #2563a8; }
+  .btn-secondary { color: #1A3F72; background: #fff; border: 1px solid #e2e6ef; }
+  .btn-secondary:hover { background: #e8f0fb; }
+
+  .survey-thanks { padding: 16px 0; text-align: center; }
+  .survey-thanks-text { font-weight: 600; color: #1A3F72; }
+
+  /* มือถือ: แบบประเมินอยู่กลางจอ */
+  @media (max-width: 700px) {
+    #survey-popup-wrapper {
+      top: 50%;
+      left: 50%;
+      right: auto;
+      bottom: auto;
+      transform: translate(-50%, -50%);
+      width: calc(100vw - 24px);
+      max-width: 400px;
+    }
+    #survey-popup {
+      width: 100%;
+      max-width: none;
+      max-height: calc(100vh - 32px);
+      max-height: calc(100dvh - 32px);
+      padding: 18px;
+    }
+  }
+
+  /* ดร็อปดาวน์บทบาท (หน้าตาเดียวกับปุ่มตัวเลือก) */
+  .survey-select {
+    display: block;
+    width: 100%;
+    padding: 8px 32px 8px 10px;
+    font-size: 13px;
+    line-height: 1.5;
+    color: #1a1f2e;
+    background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236b7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat right 12px center;
+    border: 1px solid #e2e6ef;
+    border-radius: 6px;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+  }
+  .survey-select:hover { background-color: #e8f0fb; }
+  .survey-select:focus { outline: none; border-color: #2563a8; box-shadow: 0 0 0 3px rgba(37,99,168,.12); }
+  .survey-select.empty { color: #6b7280; }
+  .survey-select:not(.empty) { border-color: #2563a8; background-color: #e8f0fb; color: #1A3F72; font-weight: 600; }
+  .survey-select option { color: #1a1f2e; font-weight: 400; background: #fff; }
+</style>
+
+<div id="survey-popup-wrapper" class="survey-wrapper">
+  <div id="survey-popup" class="survey-panel">
+
+    <button id="survey-close" aria-label="ปิด" class="survey-close">&times;</button>
+
+    <div id="survey-step-indicator" class="survey-step-indicator">ส่วนที่ 1 จาก 5</div>
+
+    <!-- ส่วนที่ 1 -->
+    <div id="survey-step-1">
+      <p class="survey-title survey-title-only">ข้อมูลผู้ตอบแบบประเมิน</p>
+      <div class="survey-field">
+        <label class="survey-label">1.1 บทบาท</label>
+        <select id="q_role" class="survey-select empty">
+          <option value="">— เลือกบทบาท —</option>
+          <option value="นักศึกษา มข.">นักศึกษา มข.</option>
+          <option value="เจ้าหน้าที่/บุคลากร มข.">เจ้าหน้าที่/บุคลากร มข.</option>
+          <option value="ประชาชนทั่วไป">ประชาชนทั่วไป</option>
+          <option value="อื่น ๆ">อื่น ๆ</option>
+        </select>
+      </div>
+      <div class="survey-field">
+        <label class="survey-label">1.2 ปัจจุบันท่านพักอาศัยอยู่หอพัก/ที่พักใกล้ มข. หรือไม่</label>
+        <div id="q_lives" class="option-group option-group-inline"></div>
+      </div>
+      <div class="survey-field">
+        <label class="survey-label">1.3 ท่านกำลังหาหอพักสำหรับตัวเองอยู่ในตอนนี้หรือไม่</label>
+        <div id="q_searching" class="option-group option-group-inline"></div>
+      </div>
+      <p id="err-step1" class="survey-err">กรุณาตอบให้ครบทุกข้อก่อนไปต่อ</p>
+      <button class="btn-primary" data-next="1">ถัดไป</button>
+    </div>
+
+    <!-- ส่วนที่ 2 -->
+    <div id="survey-step-2" class="survey-hidden">
+      <p class="survey-title">ความสะดวกในการใช้งาน</p>
+      <p class="survey-note">1 = น้อยที่สุด, 5 = มากที่สุด</p>
+      <div class="survey-field">
+        <label class="survey-label">2.1 ระบบใช้งานง่าย ไม่ซับซ้อน</label>
+        <div id="q_us1" class="scale-group"></div>
+      </div>
+      <div class="survey-field">
+        <label class="survey-label">2.2 การตั้งเงื่อนไข (คณะ ราคา น้ำหนักปัจจัย) ทำได้สะดวก</label>
+        <div id="q_us2" class="scale-group"></div>
+      </div>
+      <div class="survey-field">
+        <label class="survey-label">2.3 แผนที่และรายการอันดับอ่านเข้าใจง่าย</label>
+        <div id="q_us3" class="scale-group"></div>
+      </div>
+      <p id="err-step2" class="survey-err">กรุณาตอบให้ครบทุกข้อก่อนไปต่อ</p>
+      <div class="survey-actions">
+        <button class="btn-secondary" data-back="2">ย้อนกลับ</button>
+        <button class="btn-primary" data-next="2">ถัดไป</button>
+      </div>
+    </div>
+
+    <!-- ส่วนที่ 3 -->
+    <div id="survey-step-3" class="survey-hidden">
+      <p class="survey-title">ความถูกต้องและครบถ้วนของข้อมูล</p>
+      <p class="survey-note">1 = น้อยที่สุด, 5 = มากที่สุด</p>
+      <div class="survey-field">
+        <label class="survey-label">3.1 ข้อมูลหอพัก (ราคา ประเภท ตำแหน่ง) ถูกต้อง</label>
+        <div id="q_da1" class="scale-group"></div>
+      </div>
+      <div class="survey-field">
+        <label class="survey-label">3.2 ระยะทางและเส้นทางไปคณะสมเหตุสมผล</label>
+        <div id="q_da2" class="scale-group"></div>
+      </div>
+      <div class="survey-field">
+        <label class="survey-label">3.3 ข้อมูลหอพักและสถานที่ใกล้เคียงครอบคลุมครบถ้วน</label>
+        <div id="q_da3" class="scale-group"></div>
+      </div>
+      <p id="err-step3" class="survey-err">กรุณาตอบให้ครบทุกข้อก่อนไปต่อ</p>
+      <div class="survey-actions">
+        <button class="btn-secondary" data-back="3">ย้อนกลับ</button>
+        <button class="btn-primary" data-next="3">ถัดไป</button>
+      </div>
+    </div>
+
+    <!-- ส่วนที่ 4 -->
+    <div id="survey-step-4" class="survey-hidden">
+      <p class="survey-title">ความเหมาะสมของฟังก์ชันการทำงาน</p>
+      <p class="survey-note">1 = น้อยที่สุด, 5 = มากที่สุด</p>
+      <div class="survey-field">
+        <label class="survey-label">4.1 หอพักอันดับต้น ๆ เหมาะสมกับเงื่อนไขที่ท่านตั้งไว้</label>
+        <div id="q_fn1" class="scale-group"></div>
+      </div>
+      <div class="survey-field">
+        <label class="survey-label">4.2 ตัวกรองและการปรับน้ำหนักปัจจัยทำงานได้สมเหตุสมผล</label>
+        <div id="q_fn2" class="scale-group"></div>
+      </div>
+      <div class="survey-field">
+        <label class="survey-label">4.3 ระบบช่วยในการตัดสินใจเลือกหอพักได้จริง</label>
+        <div id="q_fn3" class="scale-group"></div>
+      </div>
+      <p id="err-step4" class="survey-err">กรุณาตอบให้ครบทุกข้อก่อนไปต่อ</p>
+      <div class="survey-actions">
+        <button class="btn-secondary" data-back="4">ย้อนกลับ</button>
+        <button class="btn-primary" data-next="4">ถัดไป</button>
+      </div>
+    </div>
+
+    <!-- ส่วนที่ 5 -->
+    <div id="survey-step-5" class="survey-hidden">
+      <p class="survey-title">ภาพรวมและข้อเสนอแนะ</p>
+      <p class="survey-note">1 = น้อยที่สุด, 5 = มากที่สุด</p>
+      <div class="survey-field">
+        <label class="survey-label">5.1 ความพึงพอใจโดยรวมต่อระบบ</label>
+        <div id="q_overall" class="scale-group"></div>
+      </div>
+      <div class="survey-field">
+        <label class="survey-label">5.2 ข้อเสนอแนะหรือสิ่งที่ควรปรับปรุง (ไม่บังคับ)</label>
+        <textarea id="q_suggestion" placeholder="พิมพ์ข้อเสนอแนะของท่าน" class="survey-textarea"></textarea>
+      </div>
+      <p id="err-step5" class="survey-err">กรุณาให้คะแนนความพึงพอใจก่อนส่ง</p>
+      <div class="survey-actions">
+        <button class="btn-secondary" data-back="5">ย้อนกลับ</button>
+        <button class="btn-primary" data-next="5">ส่งแบบประเมิน</button>
+      </div>
+    </div>
+
+    <!-- ขอบคุณ -->
+    <div id="survey-step-6" class="survey-hidden survey-thanks">
+      <p class="survey-thanks-text">ขอบคุณค่ะ / ครับ ที่ช่วยประเมินระบบ</p>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  var WEB_APP_URL = "https://script.google.com/macros/s/AKfycby3juW5ymXfYTtyb3vlxie9hBIOMo0x8lxS5rWezReABKFZD0r6TTJCHndo7kmg6VxOYQ/exec";
+  var VERSION = "v1";   // เปลี่ยนทุกรอบที่ปรับระบบ
+
+  var TOTAL_STEPS = 5;
+  var REQUIRED = {
+    1: ["role", "livesNearKku", "isSearching"],
+    2: ["us1", "us2", "us3"],
+    3: ["da1", "da2", "da3"],
+    4: ["fn1", "fn2", "fn3"],
+    5: ["overall"]
+  };
+
+  var answers = {};
+  var wrapper = document.getElementById("survey-popup-wrapper");
+  var indicator = document.getElementById("survey-step-indicator");
+
+  function buildGroup(containerId, values, answerKey, btnClass) {
+    var container = document.getElementById(containerId);
+    values.forEach(function (v) {
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = btnClass;
+      btn.textContent = v;
+      btn.addEventListener("click", function () {
+        Array.prototype.forEach.call(container.children, function (c) { c.classList.remove("selected"); });
+        btn.classList.add("selected");
+        answers[answerKey] = v;
+      });
+      container.appendChild(btn);
+    });
+  }
+
+  var roleSelect = document.getElementById("q_role");
+  roleSelect.addEventListener("change", function () {
+    if (roleSelect.value) answers.role = roleSelect.value;
+    else delete answers.role;
+    roleSelect.classList.toggle("empty", !roleSelect.value);
+  });
+  buildGroup("q_lives", ["ใช่", "ไม่ใช่"], "livesNearKku", "opt-btn");
+  buildGroup("q_searching", ["ใช่", "ไม่ใช่"], "isSearching", "opt-btn");
+  ["us1", "us2", "us3", "da1", "da2", "da3", "fn1", "fn2", "fn3", "overall"].forEach(function (k) {
+    buildGroup("q_" + k, [1, 2, 3, 4, 5], k, "scale-btn");
+  });
+
+  function goToStep(n) {
+    for (var s = 1; s <= TOTAL_STEPS + 1; s++) {
+      document.getElementById("survey-step-" + s).style.display = (s === n) ? "block" : "none";
+    }
+    indicator.style.display = (n <= TOTAL_STEPS) ? "block" : "none";
+    if (n <= TOTAL_STEPS) indicator.textContent = "ส่วนที่ " + n + " จาก " + TOTAL_STEPS;
+    document.getElementById("survey-popup").scrollTop = 0;
+    resizeFrame();
+  }
+
+  function stepComplete(n) {
+    return REQUIRED[n].every(function (k) { return answers[k] !== undefined; });
+  }
+
+  document.querySelectorAll("[data-back]").forEach(function (btn) {
+    btn.addEventListener("click", function () { goToStep(Number(btn.dataset.back) - 1); });
+  });
+
+  document.querySelectorAll("[data-next]").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var n = Number(btn.dataset.next);
+      var ok = stepComplete(n);
+      document.getElementById("err-step" + n).style.display = ok ? "none" : "block";
+      if (!ok) return;
+      if (n < TOTAL_STEPS) { goToStep(n + 1); return; }
+      submit();
+    });
+  });
+
+  function submit() {
+    var p = window.parent;
+    var price = p.latestPriceRange || [];
+    answers.suggestion  = document.getElementById("q_suggestion").value.trim();
+    answers.version     = VERSION;
+    answers.faculty     = p.latestFaculty || "";
+    answers.housingType = p.latestHousingType || "";
+    answers.genderType  = p.latestGenderType || "";
+    answers.priceMin    = price[0] != null ? price[0] : "";
+    answers.priceMax    = price[1] != null ? price[1] : "";
+    answers.top5        = (p.latestTop5Dorms || []).map(function (d) { return d.name + " (" + d.score + ")"; }).join(", ");
+    answers.device      = p.innerWidth <= 700 ? "mobile" : "desktop";
+    answers.pageUrl     = p.location.href;
+
+    sendToSheet(answers);
+    goToStep(TOTAL_STEPS + 1);
+    setTimeout(function () { wrapper.style.display = "none"; resizeFrame(); }, 2500);
+  }
+
+  document.getElementById("survey-close").addEventListener("click", function () {
+    wrapper.style.display = "none";
+    resizeFrame();
+  });
+
+  function sendToSheet(data) {
+    if (!WEB_APP_URL || WEB_APP_URL.indexOf("PASTE_YOUR") === 0) {
+      console.warn("ยังไม่ได้ตั้งค่า WEB_APP_URL");
+      return;
+    }
+    fetch(WEB_APP_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(data)
+    }).catch(function (err) {
+      console.error("ส่งข้อมูลไม่สำเร็จ:", err);
+    });
+  }
+
+  function resizeFrame() {
+    var frame = window.parent.document.getElementById("surveyFrame");
+    if (frame) frame.classList.toggle("survey-open", wrapper.style.display !== "none");
+  }
+
+  // กดพื้นที่นอกกล่องแบบประเมิน = ปิด
+  document.addEventListener("click", function (e) {
+    if (wrapper.style.display === "none") return;
+    if (!document.getElementById("survey-popup").contains(e.target)) {
+      document.getElementById("survey-close").click();
+    }
+  });
+
+  window.openSurvey = function () {
+    wrapper.style.display = "block";
+    goToStep(1);
+  };
+  wrapper.style.display = "none";
+})();
+</script>
