@@ -158,18 +158,19 @@ function renderAmenityIcons(d) {
 }
 
 
+// น้ำหนักจากแบบสอบถาม (Rank Sum Method) = Rank Value / 66
 const SURVEY_WEIGHTS = {
-price: 0.1667,
-distance: 0.1364, 
-bathroom: 0.1515,
-food: 0.1212,
-cvs: 0.1061,
-amenity: 0.0909,
-occupants: 0.0758,
-park: 0.0606,  //สวนสาธารณะ
-hospital: 0.0455,
-transport: 0.0303,
-entertain: 0.0152
+  price:     0.166666667,  // ราคาค่าเช่า
+  bathroom:  0.151515152,  // ลักษณะห้องน้ำ
+  distance:  0.136363636,  // ระยะทางถึงคณะ/มหาวิทยาลัย
+  food:      0.121212121,  // ร้านอาหาร
+  cvs:       0.106060606,  // ร้านสะดวกซื้อ
+  amenity:   0.090909091,  // สิ่งอำนวยความสะดวก
+  occupants: 0.075757576,  // จำนวนผู้เข้าพัก
+  park:      0.060606061,  // สวนสาธารณะ
+  hospital:  0.045454545,  // โรงพยาบาล
+  transport: 0.030303030,  // จุดขึ้นรถสาธารณะ
+  entertain: 0.015151515,  // สถานบันเทิง
 };
 
 const CRITERIA = [
@@ -259,9 +260,9 @@ const amenityScore = calculateAmenityScore(
     food:      d.restaurantmin_min  ?? MAX_DIST,  // เมตร   (lower_better)
     cvs:       d.storemin_min       ?? MAX_DIST,  // เมตร   (lower_better)
     amenity:   amenityScore,                      // คะแนน 0–1,(higher_better)
-    occupants: d.occupants_per_room ?? MAX_DIST,  // คน/ห้อง  (lower_better)
+    occupants: d.room_capa ?? MAX_DIST,  // คน/ห้อง  (lower_better)
     hospital:  d.hospitalmin_min    ?? MAX_DIST,  // เมตร     (lower_better)
-    transport: d.kkutransitmin_min  ?? MAX_DIST,  // เมตร     (lower_better)
+    transport: d.busstopmin_min ?? MAX_DIST,  // เมตร     (lower_better)
     entertain: d.entertainmin_min   ?? MAX_DIST,  // เมตร     (lower_better)
   };
 }
